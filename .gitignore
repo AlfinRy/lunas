@@ -1,0 +1,34 @@
+# --- Go ---
+/bin/
+*.exe
+*.test
+*.out
+/server/tmp/
+*.db
+*.db-shm
+*.db-wal
+
+# --- Node / frontend ---
+node_modules/
+web/dist/
+web/.vite/
+*.local
+
+# --- Env & secrets ---
+.env
+.env.*
+!.env.example
+
+# --- Tooling caches ---
+.air.toml
+.coverage/
+*.cover
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Build output ---
+/build/
+/lunas
+/lunas.exe
