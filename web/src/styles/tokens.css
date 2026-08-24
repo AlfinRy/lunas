@@ -1,0 +1,84 @@
+/*
+ * Lunas tokens — the oa-design construction (docs/design/oa-design) wearing
+ * Lunas' identity (docs/design-system.md §1): a single green-cast ink, every
+ * neutral derived from it at a stated percentage, one jade accent.
+ */
+
+:root {
+  --ink: #1b211d; /* oklch(0.24 0.012 155) — faint green cast */
+
+  /* stage and surfaces */
+  --background: #f9fbf9; /* oklch(0.985 0.003 140) */
+  --card: #ffffff;
+  --popover: #ffffff;
+
+  /* ink-derived neutrals: the percentages ARE the system */
+  --border: color-mix(in srgb, var(--ink) 12%, transparent);
+  --input: color-mix(in srgb, var(--ink) 14%, transparent);
+  --accent-wash: color-mix(in srgb, var(--ink) 5%, transparent);
+  --muted-foreground: #646b66;
+  --foreground: var(--ink);
+
+  /* the one accent — jade #017a4f, spent on primary actions + chart line only */
+  --primary: #017a4f;
+  --primary-strong: #156141; /* hover */
+  --primary-foreground: #ffffff;
+  --primary-soft: #e3f6ea; /* selected-state wash */
+  --ring: color-mix(in srgb, #017a4f 70%, transparent);
+
+  /* secondary controls: flat grey, no border */
+  --secondary: color-mix(in srgb, var(--ink) 8%, #ffffff);
+  --secondary-foreground: var(--ink);
+
+  /* semantic: text tints (measured, docs/design-system.md §5), never fills */
+  --success: #1d7d3e;
+  --warning: #915c08;
+  --destructive: #b32e2a;
+  --info: #1666aa;
+
+  --chart-1: #179e69;
+
+  --radius: 0.625rem;
+}
+
+.dark {
+  --ink: #ecefed;
+  --background: #101411;
+  --card: #1a201c;
+  --popover: #1d2420;
+  --border: color-mix(in srgb, var(--ink) 14%, transparent);
+  --input: color-mix(in srgb, var(--ink) 16%, transparent);
+  --accent-wash: color-mix(in srgb, var(--ink) 6%, transparent);
+  --muted-foreground: #818883;
+  --foreground: var(--ink);
+
+  --primary: #179e69; /* one notch brighter on dark */
+  --primary-strong: #65d49e;
+  --primary-foreground: #0c130f;
+  --primary-soft: color-mix(in srgb, #179e69 14%, transparent);
+
+  --secondary: color-mix(in srgb, var(--ink) 12%, #1a201c);
+  --secondary-foreground: var(--ink);
+
+  --success: #71d790;
+  --warning: #f0ba59;
+  --destructive: #f87e77;
+  --info: #7ab8e8;
+}
+
+/* Self-hosted faces (oa-design: a font CDN is a build-time network dependency;
+   keep the woff2 in the repo). */
+@font-face {
+  font-family: "Inter Tight Variable";
+  src: url("/fonts/inter-tight-var.woff2") format("woff2");
+  font-weight: 300 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono Variable";
+  src: url("/fonts/geist-mono-var.woff2") format("woff2");
+  font-weight: 400 500;
+  font-style: normal;
+  font-display: swap;
+}

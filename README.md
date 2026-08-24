@@ -37,6 +37,22 @@ An AI agent that autonomously manages accounts receivable:
 | `docs/design-system.md` | Theme: OKLCH color tokens (verified contrast), type scale, layout, motion |
 | `docs/ux-writing.md` | Voice, microcopy inventory, and the 4-stage chase-email ladder |
 
+## Quickstart
+
+```sh
+# Terminal 1 — API on :8080 (auto-seeds demo data on first run)
+go run ./cmd/lunas
+
+# Terminal 2 — SPA on :5173 (proxies /api)
+cd web && bun install && bun run dev
+```
+
+Zero LLM key needed — the agent runs in **template mode** out of the box
+(`LLM_API_KEY`/`LLM_BASE_URL`/`LLM_MODEL` switch on a provider when set).
+
+Single-binary deploy: `cd web && bun run build && go build -o lunas ./cmd/lunas` —
+the SPA is embedded and served from the same port.
+
 ## Credits
 
 - Design language: [oa-design](https://github.com/OpenLabs-so/oa-design) by Voprex Labs / Open Analytics — MIT

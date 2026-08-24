@@ -66,8 +66,8 @@ func main() {
 	if _, err := os.Stat("web/dist/index.html"); err == nil {
 		webFS = os.DirFS("web/dist")
 	}
-	spa := e.Group("", spaNotAPI)
-	spa.GET("/*", staticHandler(webFS))
+	e.GET("/*", staticHandler(webFS))
+	e.GET("/", staticHandler(webFS))
 
 	go func() {
 		addr := ":" + cfg.Port
@@ -81,15 +81,6 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_ = e.Shutdown(shutdownCtx)
-}
-
-func spaNotAPI(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		if strings.HasPrefix(c.Path(), "/api") {
-			return echo.NewHTTPError(http.StatusNotFound, "Not found.")
-		}
-		return next(c)
-	}
 }
 
 func staticHandler(webFS fs.FS) echo.HandlerFunc {
