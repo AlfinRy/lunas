@@ -1,0 +1,852 @@
+openapi: 3.1.0
+info:
+  title: Lunas API
+  version: 0.1.0
+  description: |
+    Lunas — the AI collections agent that gets you paid.
+    All monetary values are integer minor units (cents). Dates are ISO `YYYY-MM-DD`;
+    timestamps are RFC 3339. The server exposes a demo clock via settings.sim_now;
+    all age/overdue math runs on that clock.
+servers:
+  - url: /api
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Liveness probe
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, time]
+                properties:
+                  status:
+                    type: string
+                  time:
+                    type: string
+                    format: date-time
+
+  /dashboard:
+    get:
+      operationId: getDashboard
+      summary: KPI cards + aging buckets for the dashboard
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+
+  /clients:
+    get:
+      operationId: listClients
+      summary: List payers with payment behavior
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Client"
+    post:
+      operationId: createClient
+      summary: Add a payer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /clients/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+    get:
+      operationId: getClient
+      summary: Get one payer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateClient
+      summary: Update a payer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientUpdate"
+      responses:
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /invoices:
+    get:
+      operationId: listInvoices
+      summary: "List invoices (sorted: overdue first, then by due date)"
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/InvoiceStatus"
+        - name: client_id
+          in: query
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Invoice"
+    post:
+      operationId: createInvoice
+      summary: Add an invoice; the agent starts planning its chase immediately
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvoiceInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /invoices/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+    get:
+      operationId: getInvoice
+      summary: Invoice detail with client summary
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateInvoice
+      summary: Update invoice fields (incl. status transitions such as pause/resume/write-off)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvoiceUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /invoices/{id}/activity:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+    get:
+      operationId: listInvoiceActivity
+      summary: Agent timeline for one invoice
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /agent/inbox:
+    get:
+      operationId: getAgentInbox
+      summary: Plan cards (what/when/why) and drafts awaiting approval
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentInbox"
+
+  /agent/drafts/{id}/approve:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+    post:
+      operationId: approveDraft
+      summary: Approve & send a draft (moves to outbox)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OutboxEmail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /agent/drafts/{id}/skip:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+    post:
+      operationId: skipDraft
+      summary: Skip a draft; the agent replans
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Draft"
+
+  /outbox:
+    get:
+      operationId: listOutbox
+      summary: Sent chases, newest first (mock mail client)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OutboxEmail"
+
+  /payments/parse:
+    post:
+      operationId: parsePayment
+      summary: Paste a payment notification; returns parsed fields + candidate invoice matches
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentParseResult"
+        "422":
+          description: Nothing parseable found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /payments:
+    post:
+      operationId: reconcilePayment
+      summary: Record a payment and link it to an invoice (settle it)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentInput"
+      responses:
+        "201":
+          description: Settled (or partially applied)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /settings:
+    get:
+      operationId: getSettings
+      summary: Workspace settings incl. demo clock
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+    patch:
+      operationId: updateSettings
+      summary: Update settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettingsUpdate"
+      responses:
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+
+  /simulate/advance:
+    post:
+      operationId: simulateAdvance
+      summary: Advance the demo clock; the agent acts as of the new time
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                days:
+                  type: integer
+                  minimum: 1
+                to_date:
+                  type: string
+                  format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+
+  /demo/reset:
+    post:
+      operationId: resetDemo
+      summary: Reset demo data to the seeded state
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+
+components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+
+  responses:
+    BadRequest:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: Conflict (duplicate number, wrong state)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+        fields:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+    InvoiceStatus:
+      type: string
+      enum: [draft, scheduled, chasing, paused, paid, written_off]
+
+    ChaseStage:
+      type: string
+      enum: [stage0_reminder, stage1_polite, stage2_firm, stage3_final, stage4_escalation]
+      description: Escalation ladder (see docs/ux-writing.md)
+
+    AgentState:
+      type: string
+      enum: [idle, planning, awaiting_approval, chasing, holding, stopped]
+      description: Agent state shown in the invoice table
+
+    Reliability:
+      type: string
+      enum: [pays_on_time, usually_late, chronically_late]
+
+    PaymentScore:
+      type: object
+      required: [avg_days_late, reliability, settled_count]
+      properties:
+        avg_days_late:
+          type: number
+        reliability:
+          $ref: "#/components/schemas/Reliability"
+        settled_count:
+          type: integer
+
+    Client:
+      type: object
+      required: [id, name, email, payment_terms_days]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        payment_terms_days:
+          type: integer
+          minimum: 0
+        relationship_note:
+          type: string
+          description: e.g. "long-term client, keep warm" — pins the ladder at gentle stages
+        payment_score:
+          $ref: "#/components/schemas/PaymentScore"
+
+    ClientInput:
+      type: object
+      required: [name, email]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        email:
+          type: string
+          format: email
+        payment_terms_days:
+          type: integer
+          minimum: 0
+          default: 14
+        relationship_note:
+          type: string
+          maxLength: 280
+
+    ClientUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        payment_terms_days:
+          type: integer
+          minimum: 0
+        relationship_note:
+          type: string
+          maxLength: 280
+
+    Invoice:
+      type: object
+      required: [id, client_id, client_name, number, amount_cents, currency, issued_on, due_on, status, agent_state, created_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        client_id:
+          type: integer
+          format: int64
+        client_name:
+          type: string
+        number:
+          type: string
+        amount_cents:
+          type: integer
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+        issued_on:
+          type: string
+          format: date
+        due_on:
+          type: string
+          format: date
+        status:
+          $ref: "#/components/schemas/InvoiceStatus"
+        notes:
+          type: string
+        agent_state:
+          $ref: "#/components/schemas/AgentState"
+        current_stage:
+          type: [string, "null"]
+          allOf:
+            - $ref: "#/components/schemas/ChaseStage"
+        next_action_on:
+          type: [string, "null"]
+          format: date
+        days_overdue:
+          type: integer
+          description: Computed against settings.sim_now (0 when not overdue)
+        amount_paid_cents:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    InvoiceInput:
+      type: object
+      required: [client_id, number, amount_cents, currency, issued_on, due_on]
+      properties:
+        client_id:
+          type: integer
+          format: int64
+        number:
+          type: string
+          minLength: 1
+          maxLength: 40
+        amount_cents:
+          type: integer
+          minimum: 1
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+        issued_on:
+          type: string
+          format: date
+        due_on:
+          type: string
+          format: date
+        notes:
+          type: string
+          maxLength: 500
+
+    InvoiceUpdate:
+      type: object
+      properties:
+        number:
+          type: string
+        amount_cents:
+          type: integer
+          minimum: 1
+        due_on:
+          type: string
+          format: date
+        notes:
+          type: string
+        status:
+          $ref: "#/components/schemas/InvoiceStatus"
+
+    Dashboard:
+      type: object
+      required: [outstanding_cents, overdue_cents, recovered_cents, dso_days, counts, sim_now]
+      properties:
+        outstanding_cents:
+          type: integer
+        overdue_cents:
+          type: integer
+        recovered_cents:
+          type: integer
+          description: Lifetime sum of payments linked to invoices (the counter)
+        dso_days:
+          type: number
+          description: 30-day rolling Days Sales Outstanding
+        counts:
+          type: object
+          required: [overdue, due_soon, chasing, awaiting_approval]
+          properties:
+            overdue:
+              type: integer
+            due_soon:
+              type: integer
+              description: Due within 3 days, not yet overdue
+            chasing:
+              type: integer
+            awaiting_approval:
+              type: integer
+        sim_now:
+          type: string
+          format: date
+          description: The demo clock the numbers are computed against
+
+    Activity:
+      type: object
+      required: [id, type, message, created_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        invoice_id:
+          type: [integer, "null"]
+        type:
+          type: string
+          enum: [invoice_created, plan_made, draft_ready, draft_sent, draft_skipped, payment_detected, invoice_settled, chase_paused, chase_resumed, clock_advanced, note]
+        message:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    PlanCard:
+      type: object
+      required: [invoice_id, invoice_number, client_name, amount_cents, stage, planned_on, reasoning]
+      properties:
+        invoice_id:
+          type: integer
+        invoice_number:
+          type: string
+        client_name:
+          type: string
+        amount_cents:
+          type: integer
+        stage:
+          $ref: "#/components/schemas/ChaseStage"
+        planned_on:
+          type: string
+          format: date
+        reasoning:
+          type: string
+          description: Shown to the user and judges — why this plan
+
+    Draft:
+      type: object
+      required: [id, invoice_id, invoice_number, client_name, client_email, stage, subject, body, status, created_at]
+      properties:
+        id:
+          type: integer
+        invoice_id:
+          type: integer
+        invoice_number:
+          type: string
+        client_name:
+          type: string
+        client_email:
+          type: string
+        stage:
+          $ref: "#/components/schemas/ChaseStage"
+        subject:
+          type: string
+        body:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, sent, skipped]
+        created_at:
+          type: string
+          format: date-time
+
+    OutboxEmail:
+      type: object
+      required: [id, invoice_number, to_name, to_email, subject, body, sent_at]
+      properties:
+        id:
+          type: integer
+        invoice_number:
+          type: string
+        to_name:
+          type: string
+        to_email:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+        sent_at:
+          type: string
+          format: date-time
+
+    AgentInbox:
+      type: object
+      required: [plans, drafts]
+      properties:
+        plans:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanCard"
+        drafts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Draft"
+
+    PaymentParseResult:
+      type: object
+      required: [parsed, matches]
+      properties:
+        parsed:
+          type: object
+          required: [amount_cents]
+          properties:
+            amount_cents:
+              type: integer
+            paid_on:
+              type: [string, "null"]
+              format: date
+            payer_hint:
+              type: [string, "null"]
+              description: Payer name/ID extracted from the text
+        matches:
+          type: array
+          items:
+            type: object
+            required: [invoice_id, invoice_number, client_name, amount_cents, confidence]
+            properties:
+              invoice_id:
+                type: integer
+              invoice_number:
+                type: string
+              client_name:
+                type: string
+              amount_cents:
+                type: integer
+              days_overdue:
+                type: integer
+              confidence:
+                type: string
+                enum: [high, medium, low]
+
+    Payment:
+      type: object
+      required: [id, amount_cents, paid_on, source, invoice_id, invoice_status_after]
+      properties:
+        id:
+          type: integer
+        invoice_id:
+          type: integer
+        amount_cents:
+          type: integer
+        paid_on:
+          type: string
+          format: date
+        source:
+          type: string
+          enum: [paste, manual]
+        confidence:
+          type: [string, "null"]
+        raw_text:
+          type: [string, "null"]
+        invoice_status_after:
+          $ref: "#/components/schemas/InvoiceStatus"
+
+    PaymentInput:
+      type: object
+      required: [amount_cents, invoice_id]
+      properties:
+        invoice_id:
+          type: integer
+        amount_cents:
+          type: integer
+          minimum: 1
+        paid_on:
+          type: string
+          format: date
+        source:
+          type: string
+          enum: [paste, manual]
+          default: manual
+        confidence:
+          type: [string, "null"]
+        raw_text:
+          type: [string, "null"]
+
+    Settings:
+      type: object
+      required: [sender_name, sender_email, default_terms_days, global_mode, template_mode, sim_now]
+      properties:
+        sender_name:
+          type: string
+        sender_email:
+          type: string
+          format: email
+        default_terms_days:
+          type: integer
+        global_mode:
+          type: string
+          enum: [approve_each, full_auto]
+        template_mode:
+          type: boolean
+          description: True when no LLM provider configured — deterministic templates
+        sim_now:
+          type: [string, "null"]
+          format: date
+          description: Demo clock; null = real today
+
+    SettingsUpdate:
+      type: object
+      properties:
+        sender_name:
+          type: string
+        sender_email:
+          type: string
+          format: email
+        default_terms_days:
+          type: integer
+        global_mode:
+          type: string
+          enum: [approve_each, full_auto]

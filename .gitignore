@@ -10,7 +10,8 @@
 
 # --- Node / frontend ---
 node_modules/
-web/dist/
+web/dist/*
+!web/dist/index.html
 web/.vite/
 *.local
 
