@@ -108,7 +108,7 @@ Above-the-fold: product name, one-line promise, hero showing the "Lunas moment" 
 | Resilience | No API key configured → template mode banner, product fully usable (judges can run repo without keys) |
 | Privacy | No real PII; seeded synthetic clients; LLM calls contain synthetic data only |
 | Testability | Policy engine (F3.1) and matcher (F5.1) unit-tested; core loop E2E-tested (Playwright) |
-| Stack | **Go 1.24 API** (Echo, sqlc, modernc SQLite) + **Vite SPA** (React 19, TanStack Router, TanStack Query, Tailwind v4) · OpenAPI contract with dual codegen (openapi-typescript FE / oapi-codegen BE) · single-binary deploy via `go:embed` · provider-agnostic LLM adapter |
+| Stack | **Go 1.24 API** (Echo, sqlc, modernc SQLite) + **Vite SPA** (React 19, TanStack Router, TanStack Query, Tailwind v4, `motion` v12) · **[oa-design](https://github.com/OpenLabs-so/oa-design) design language** (MIT, vendored — jade-ink adaptation, see docs/design-system.md) · OpenAPI contract with dual codegen (openapi-typescript FE / oapi-codegen BE) · single-binary deploy via `go:embed` · provider-agnostic LLM adapter |
 
 ## 7. Data Model (summary)
 

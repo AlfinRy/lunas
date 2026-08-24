@@ -67,7 +67,7 @@ Flow vocabulary: **Get started → Continue → Done** (one set, never alternate
 | "Oops! Something went wrong." | "Unable to send draft. Check the sender email in Settings, then try again." |
 | "LLM error" | "Couldn't reach the AI provider. Using the standard template instead." *(product keeps working — resilience is the message)* |
 
-Hints shown **before** the mistake (placeholder/format hints), phrased positively ("Use only letters…").
+Hints shown **before** the mistake (placeholder/format hints), phrased positively ("Use only letters…"). **Report all field problems at once** — fixing them one at a time is a needlessly slow form (add-invoice modal validates every field on submit).
 
 ## 6. Empty states (orientation + one action)
 
@@ -87,6 +87,10 @@ Every field keeps a visible label; placeholders show format only: `INV-0042`, `b
 - ✅ "Copy me on every chase"
 - ✅ "Escalate to final notice after 14 days overdue"
 - Links describe destination: "Edit payment terms", never "Click here" / bare "Learn more".
+
+## 8.5 Never claim what the system hasn't confirmed
+
+A pasted bank notification is *input*, not confirmation. The reconciliation flow says "Confirming payment…" until the matcher links it and the user confirms (or confidence is High); only then: "INV-0042 settled — $2,400 recovered." Waiting states say what is awaited and how long it usually takes — only durations we've measured ("This usually takes a few seconds." for the LLM draft).
 
 ## 9. Toasts
 

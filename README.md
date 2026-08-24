@@ -37,6 +37,10 @@ An AI agent that autonomously manages accounts receivable:
 | `docs/design-system.md` | Theme: OKLCH color tokens (verified contrast), type scale, layout, motion |
 | `docs/ux-writing.md` | Voice, microcopy inventory, and the 4-stage chase-email ladder |
 
+## Credits
+
+- Design language: [oa-design](https://github.com/OpenLabs-so/oa-design) by Voprex Labs / Open Analytics — MIT
+
 ## Status
 
 🚧 **Build in progress** — hackathon window Aug 21 – Sep 15, 2026 (day 3/25).

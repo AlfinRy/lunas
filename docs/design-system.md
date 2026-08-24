@@ -1,241 +1,154 @@
-# Lunas Design System — Theme & Style Guide
+# Lunas Design System v2 — the OA Design language, wearing Lunas colors
 
-Single source of truth for the visual language. Built on the principles of the
-`better-colors`, `better-typography`, `better-layout`, and `better-ui` skills.
-Every value below was **measured**, not guessed (see §1.5 verification).
+**Base:** [oa-design](https://github.com/OpenLabs-so/oa-design) (MIT) — the shipped
+design language of Open Analytics, vendored complete at `docs/design/oa-design/`
+(skill: 12 component recipes, 7 guides, token CSS, type-checked sources).
 
-Stack context: Vite + React 19 + TanStack Router SPA · Tailwind v4 (`@theme` tokens) · Lucide icons. No SSR — the dashboard is the product; the SPA is embedded into the Go binary at deploy time.
+**The look in one sentence:** white squircle surfaces resting on a quiet grey stage,
+drawn in a single green-cast ink, moved by a single spring family, with one jade
+accent spent in exactly one place per view — *the color of getting paid.*
+
+v1 (OKLCH scale + concentric radius + CSS transitions) is superseded. What survives
+from v1: the **measured contrast pairs** (§5) — our jade/ink values carry over as
+text tints. Everything else follows OA construction.
 
 ---
 
-## 1. Color
+## 1. Identity mapping — OA construction, Lunas ink
 
-### 1.1 Principles
+OA's rule: *derive, don't pick* — every neutral is `--ink` mixed at a stated
+percentage. We keep that construction and pour Lunas' identity into the inputs:
 
-- **One color, one meaning.** Jade green = the brand *and* the "paid/settled" state — deliberately unified, because getting paid **is** the brand (the "Lunas moment"). Amber = attention/aging. Red = overdue/destructive. Blue = links & information. Never borrow a status color for decoration.
-- **Only the primary action is filled.** One colored control per view (the primary button); secondaries are neutral. Status pills are tints, never saturated fills competing with actions.
-- **Dark mode is tuned, not reversed.** Chroma and lightness re-derived; every fg/bg pair re-measured.
-
-### 1.2 Semantic tokens — Light (default)
-
-| Token | OKLCH | sRGB fallback | Role |
+| OA token | Open Analytics | **Lunas value** | Why |
 |---|---|---|---|
-| `--bg` | `oklch(0.985 0.003 140)` | `#f9fbf9` | App background |
-| `--surface` | `oklch(1 0 0)` | `#ffffff` | Cards, tables, modals |
-| `--text-primary` | `oklch(0.24 0.012 155)` | `#1b211d` | Headings, body |
-| `--text-secondary` | `oklch(0.47 0.015 155)` | `#545d57` | Supporting text |
-| `--text-muted` | `oklch(0.52 0.012 155)` | `#646b66` | Captions, timestamps |
-| `--border` | `oklch(0.9 0.008 150)` | `#dadfdb` | Dividers, input borders |
-| `--primary-600` | `oklch(0.51 0.115 160)` | `#017a4f` | Primary button bg |
-| `--primary-700` | `oklch(0.44 0.09 160)` | `#156141` | Primary hover; text on `primary-100` |
-| `--primary-500` | `oklch(0.62 0.135 160)` | `#179e69` | Charts, accents (non-text) |
-| `--primary-100` | `oklch(0.955 0.025 160)` | `#e3f6ea` | Paid pill tint, selected states |
-| `--success-600` | `oklch(0.52 0.13 150)` | `#1d7d3e` | Success text/icons |
-| `--warning-600` | `oklch(0.52 0.11 70)` | `#915c08` | "Due soon" text on tint |
-| `--warning-100` | `oklch(0.96 0.03 85)` | `#fbf1dc` | "Due soon" pill tint |
-| `--danger-600` | `oklch(0.51 0.17 27)` | `#b32e2a` | Overdue, destructive |
-| `--danger-100` | `oklch(0.96 0.018 27)` | `#feeeeb` | Overdue pill tint |
-| `--info-600` | `oklch(0.5 0.13 250)` | `#1666aa` | Links |
+| `--ink` | `#292929` | `#1b211d` (oklch 0.24 0.012 155) | Faint green cast; every derived neutral (borders, washes, inputs) inherits it |
+| `--primary` | `#305dde` | `#017a4f` jade | White-on-primary = 5.39:1 ✓. The accent appears on the primary button and the primary chart line and **nowhere else** |
+| `--primary` (dark) | `#296FF0` | `#179e69` | One notch brighter, per OA's dark rule |
+| `--ring` | `#3ba6f1` | jade at 70% | Focus ring |
+| `--chart-1` | `#296FF0` | `#179e69` | DSO sparkline line |
+| `--background` | `#f6f6f6` | `oklch(0.985 0.003 140)` #f9fbf9 | The grey-green stage between plates |
+| `--card`, `--popover` | white | white | unchanged |
+| `--secondary` | `#e9e9e9` | `color-mix(ink 8%, #fff)` | flat grey, no border |
+| semantic text tints | red/emerald/amber 700-row (light), 400-row (dark) | **our measured set** — success `#1d7d3e` / warning `#915c08` / destructive `#b32e2a`; dark: `#71d790` / `#f0ba59` / `#f87e77` | §5 verified |
 
-### 1.3 Semantic tokens — Dark
+Install `docs/design/oa-design/_root.css` as the base block (with the substitutions
+above), then mirror under Tailwind v4 `@theme inline` → `--color-*`. Components use
+semantic utilities only; raw values never appear in components.
 
-| Token | OKLCH | sRGB fallback |
+**Status rendering (OA rule 7/8, replaces v1 tinted pills):** semantic colors are
+*text tints and small dots, never fills*. A status is a neutral-surface pill with a
+6px dot + tinted text: `● Paid`, `● Overdue`, `● Chasing`. Calmer tables, and the
+jade accent keeps its full power for the moments that matter.
+
+## 2. Typography — Inter Tight, ceiling at 500
+
+- **Inter Tight** (variable, woff2, self-hosted in repo) 300–500. **No semibold,
+  no bold anywhere.** Hierarchy = size, color (`foreground/80` vs `muted-foreground`),
+  and spacing. KPI numbers: Inter Tight 500, `tabular-nums`, large size.
+- **Geist Mono** 400–500 for invoice numbers (`INV-0042`), emails, amounts where
+  tabular isn't enough — `code, kbd, samp, pre` at base layer.
+- Headings `font-medium tracking-tight`; `text-wrap: balance` on marketing headlines.
+- **`tabular-nums` on every monetary value, date, counter, DSO figure** (unchanged
+  from v1 — non-negotiable).
+- Inputs render at 16px on mobile (`text-base sm:text-sm`).
+- Scale (semantic names, from OA): `text-display` 48–56 landing only · `text-h1` 28 ·
+  `text-h2` 20 · `text-h3` 16 (500) · `text-body` 15 · `text-sm` 14 · `text-xs` 13 ·
+  `text-label` 12 +0.06em uppercase eyebrows.
+
+Fraunces (v1 display serif) is **dropped** — the calm, dense, native OA voice is the
+better identity for a collections product.
+
+## 3. Surfaces — squircles and pills
+
+- **Squircle cards** (continuous-curvature corners) for every surface: KPI cards,
+  table plates, panels, the outbox message card. Radius scale from `--radius: 10px`
+  (`calc()` multipliers, see `_tokens.md`) — never a bespoke radius.
+- **Pills for actions**: every clickable that is not a card is a pill
+  (`rounded-full`). A `rounded-lg` rectangle on a control is the smell of a foreign
+  component.
+- **Two layers, and the gap is the page**: white plates on the grey-green stage; the
+  page background is the only divider. No `<hr>`, no horizontal rules.
+- Shadows: only where OA puts them (popovers, modals). Cards sit on the stage by
+  contrast of layer, not by shadow.
+- Images/desk content: 1px pure-black/white outline at 10% opacity (v1 rule kept).
+
+## 4. Motion — one spring family, nothing over 200ms
+
+`motion` (v12) is a frontend dependency. **The seven springs, verbatim** — do not
+invent an eighth:
+
+| Spring | Value | Lunas usage |
 |---|---|---|
-| `--bg` | `oklch(0.185 0.008 160)` | `#101411` |
-| `--surface` | `oklch(0.235 0.01 160)` | `#1a201c` |
-| `--text-primary` | `oklch(0.95 0.005 155)` | `#ecefed` |
-| `--text-secondary` | `oklch(0.75 0.012 155)` | `#a8b0ab` |
-| `--text-muted` | `oklch(0.62 0.012 155)` | `#818883` |
-| `--border` | `oklch(0.32 0.012 160)` | `#2e3531` |
-| `--primary-400` | `oklch(0.79 0.13 160)` | `#65d49e` |
-| `--primary-600` | `oklch(0.51 0.115 160)` | `#017a4f` |
-| `--success-400` | `oklch(0.8 0.14 152)` | `#71d790` |
-| `--warning-400` | `oklch(0.82 0.13 80)` | `#f0ba59` |
-| `--danger-400` | `oklch(0.73 0.15 25)` | `#f87e77` |
+| PANEL | 550/38 | dropdowns, mode switcher, invoice row menus |
+| LAYOUT | 550/40 | tab-bar traveling highlight, measured-height dialogs |
+| POP | 400/26 | add-invoice modal, reconciliation dialog entrance |
+| POP_EXIT | 380/28 | dialog exits |
+| BANNER | 400/30 | demo-time floating pill, template-mode banner |
+| FLICK | 900/50 | **the Lunas moment** — status dot/icon swap, chevrons |
+| CHART | 300/28 | DSO sparkline tooltip/crosshair |
 
-Dark-mode status tints reuse `--surface` + a 12% alpha of the 400-level color; text uses the 400-level color (all pairs pass AA, §1.5).
+- Micro fades 0.10–0.18s easeOut; **nothing in app chrome tweens past 0.2s**.
+- **Chrome never waits:** layout and titles render instantly; only data swaps from a
+  pixel-matched skeleton, arriving **by blur, not by pop** (skeleton recipe).
+- Signature moves per `_motion.md`: measured-height choreography (multi-step
+  reconciliation), the sliding highlight (invoice status filters), the label mask.
+- **The Lunas moment (v2):** payment matched → status dot + text tint swap on FLICK
+  (danger→jade), row wash fades, recovered counter ticks (tabular-nums, LAYOUT),
+  success toast pulses once per OA toast recipe. Total ≤ 1.2s, honors
+  `prefers-reduced-motion` (quality floor rule 10).
+- Enter staggers only on first dashboard load (~80ms beats, reveal recipe), once.
 
-### 1.4 Tailwind v4 wiring
+## 5. Contrast verification (carried from v1, still enforced)
 
-```css
-@theme inline {
-  --color-bg: oklch(0.985 0.003 140);
-  --color-surface: oklch(1 0 0);
-  --color-primary: oklch(0.51 0.115 160);
-  --color-primary-strong: oklch(0.44 0.09 160);
-  --color-primary-soft: oklch(0.955 0.025 160);
-  /* ...status tokens as above... */
-}
-```
-Author with semantic utilities (`bg-surface`, `text-primary`); **raw palette values never appear in components.**
+All pairs re-measured WCAG via the OKLCH→sRGB script:
 
-### 1.5 Contrast verification (WCAG, measured via OKLCH→sRGB script)
+| Pair (light) | Ratio | | Pair (dark) | Ratio |
+|---|---|---|---|---|
+| ink `#1b211d` / stage | 15.7:1 AAA | | text / bg | 16.0:1 AAA |
+| `#545d57` secondary text | 6.6:1 AA | | secondary | 8.4:1 AAA |
+| `#646b66` muted text | 5.3:1 AA | | muted | 5.1:1 AA |
+| white / jade `#017a4f` | 5.4:1 AA | | jade-dark `#179e69` text | 9.1:1 AAA |
+| success `#1d7d3e` text | 5.0:1 AA | | `#71d790` | 9.3:1 AAA |
+| warning `#915c08` text | 5.0:1 AA | | `#f0ba59` | 9.4:1 AAA |
+| destructive `#b32e2a` text | 5.5:1 AA | | `#f87e77` | 6.5:1 AA |
 
-| Pair (light) | Ratio | Grade | Pair (dark) | Ratio | Grade |
-|---|---|---|---|---|---|
-| text-primary / bg | 15.75 | AAA | text-primary / bg | 16.05 | AAA |
-| text-secondary / bg | 6.56 | AA | text-secondary / bg | 8.37 | AAA |
-| text-muted / bg | 5.26 | AA | text-muted / bg | 5.12 | AA |
-| white / primary-600 (btn) | 5.39 | AA | primary-400 / surface | 9.05 | AAA |
-| white / primary-700 (hover) | 7.45 | AAA | success-400 / surface | 9.33 | AAA |
-| primary-700 / primary-100 | 6.61 | AA | warning-400 / surface | 9.37 | AAA |
-| warning-600 / warning-100 | 5.01 | AA | danger-400 / surface | 6.50 | AA |
-| danger-600 / danger-100 | 5.56 | AA | | | |
-| info-600 / bg (links) | 5.75 | AA | | | |
+Re-run `scripts/colorcheck.py` whenever a token changes.
 
-All palette steps verified in-gamut for sRGB at the listed chroma. Re-run the verification script (`scripts/colorcheck.py`, to be added in build window) whenever a token changes.
+## 6. Layout (delta from v1)
 
----
+Unchanged: app shell (sidebar 200px, content 1200px, sticky header), spacing scale
+4–64, 2× grouping rule, alignment edges, importance ordering (overdue first),
+content-driven breakpoints (1280 / 1024 icon-rail / 768 stacked), progressive
+disclosure with peek, logical properties, 16px mobile inputs.
 
-## 2. Typography
+OA additions: settings screens follow `_layout.md` plate anatomy; landing page per
+`_landing.md` (hero, reveals in 80ms beats, header-morph glass pill).
 
-### 2.1 Families
+## 7. Component mapping — Lunas features → OA recipes
 
-| Role | Family | Weights | Notes |
-|---|---|---|---|
-| UI text | **Inter Variable** (woff2, self-hosted) | 400 / 500 / 600 | Body, tables, controls. Weights < 400 never used below 18px |
-| Display | **Fraunces** (woff2) | 560–640 | Landing hero, section titles, the "Lunas" wordmark only |
-
-Two families, paired for contrast (editorial serif vs neutral sans) — never two near-identical sans. Monospace not used; Inter's `tabular-nums` covers numeric alignment.
-
-### 2.2 Scale (semantic names, not sizes)
-
-| Token | Size / line-height | Usage |
-|---|---|---|
-| `text-display` | 56px / 1.1, letter-spacing −0.02em | Landing hero only |
-| `text-h1` | 30px / 1.15, ls −0.01em | Page titles ("Invoices") |
-| `text-h2` | 20px / 1.25 | Section headers, modal titles |
-| `text-h3` | 16px / 1.4, weight 600 | Card group headers |
-| `text-body` | 15px / 1.55 | Default body, table cells |
-| `text-sm` | 14px / 1.5 | Secondary rows, inputs |
-| `text-xs` | 13px / 1.5, ls +0.01em | Captions, timestamps, meta |
-| `text-label` | 12px / 1.4, ls +0.06em, uppercase | Eyebrow labels ("OUTSTANDING") |
-
-Rules: adjacent heading levels always descend; `text-wrap: balance` on headings; `text-wrap: pretty` on descriptions; inputs render at **16px on mobile** (`text-base sm:text-sm`) to prevent iOS zoom; `antialiased` set once at root.
-
-### 2.3 Numbers & money (critical)
-
-- **`font-variant-numeric: tabular-nums` on every monetary value, date, counter, and DSO figure.** Amounts change and re-sort; proportional digits would jitter the layout.
-- Currency format: `$2,400.00` / `Rp 2.400.000` via `Intl.NumberFormat`; amount cells right-aligned, headers aligned to the data (`text-align: end`).
-- Big KPI numbers: Inter 600, tabular-nums; count-up animation only on change, ≤ 800 ms, respects reduced motion.
-
-### 2.4 Truncation & wrapping
-
-Client names and subjects: single-line ellipsis + full value in tooltip/detail view. Email draft previews: 2-line `line-clamp`. No fixed-width text containers; test with the longest seeded client name ("Meridian Coffee Company Pty Ltd").
-
----
-
-## 3. Layout
-
-### 3.1 App shell
-
-- **Left nav (200px):** Dashboard, Invoices, Clients, Agent inbox (badge with pending approvals), Outbox, Settings. Content max-width `1200px`, centered, `24px` inline padding (16px on mobile).
-- **Header row:** page title left; demo-time pill + mode toggle (Approve / Full-auto) right. Sticky, floats above content (`backdrop-blur` on `--surface/85%`).
-- Reading order = importance: KPIs → attention items (overdue first) → all invoices. Overdue rows are always the top table group.
-
-### 3.2 Spacing scale
-
-`4 · 8 · 12 · 16 · 24 · 32 · 48 · 64` (px). One step per level of subordination.
-
-| Relationship | Gap |
+| Lunas surface | OA recipe |
 |---|---|
-| Within a control group (label→input, icon→label) | 8 |
-| Within a card (rows, KPI + caption) | 8–12 |
-| Between cards / table groups | 24 |
-| Between page sections | 48 |
+| KPI cards, invoice table plate, client cards, outbox message | `01-squircle-card` |
+| Primary/secondary/destructive actions, honest loading | `02-button` |
+| Mode switcher (Approve / Full-auto), filters, selects | `03-dropdown` + `04-tab-bar` |
+| Add/edit invoice | `05-modal` |
+| Reconciliation confirm (match → link → settled) | `06-multi-step-dialog` |
+| Dashboard & table loads | `07-skeleton` (pixel-matched, blur arrival) |
+| Template-fallback banner ("AI provider unreachable…") | `08-notice-strip` |
+| Demo-time pill + time controls | `09-floating-pill` |
+| Lunas moment, chase sent, demo reset | `10-toast` |
+| Landing header | `11-header-morph` |
+| Landing sections | `12-reveal` |
 
-**Group with space, not lines:** borders only for structure (table row separators, input borders). Never a `<hr>` where `24px` gap communicates the same grouping. Inter-group gap ≥ 2× intra-group gap.
+## 8. Quality floor (OA rule 10, enforced in review)
 
-### 3.3 Alignment edges
+Focus rings visible in both themes (`role` of `--ring`), `role="status"` on live
+regions/toasts, `aria-hidden` on decorative glyphs, `prefers-reduced-motion`
+respected, no horizontal page scroll, text selectable by default, full keyboard
+operability of the core loop (add → approve → reconcile).
 
-All content in a card aligns to two shared edges (inline start + end); amounts column forms its own right-edge alignment zone. No stray indents — every edge traces to the 8px grid.
+## 9. Attribution
 
-### 3.4 Responsive behavior (content-driven breakpoints)
-
-| Range | Layout |
-|---|---|
-| ≥ 1280 | Full: nav + 4 KPI cards in one row + full table |
-| 1024–1279 | KPIs 2×2; table keeps amount + status columns |
-| 768–1023 | Nav collapses to icon rail (56px); table drops "issued" column |
-| < 768 | Nav becomes top bar with menu; invoices render as stacked cards; **inputs stay 16px** |
-
-Collapse late (keep the expanded layout as long as it genuinely fits). Core demo target is desktop 1440px; mobile must remain fully operable for the add→approve→reconcile loop.
-
-### 3.5 Progressive disclosure
-
-Draft detail (full email body) lives behind a chevron; the row shows subject + 2-line preview. The next collapsed section always peeks 16–32px past the fold — never a dead-flat scroll edge.
-
-### 3.6 Growth & i18n readiness
-
-No fixed widths on text containers; labels wrap. Buttons sized by content (`min-w` only where the demo needs a stable tap target). Logical properties everywhere (`ps-*`, `pe-*`, `text-start`) so an RTL mirror doesn't break alignment.
-
----
-
-## 4. Surfaces, depth & components
-
-### 4.1 Radius — concentric
-
-| Element | Radius |
-|---|---|
-| Cards, modals | 16px |
-| Buttons, inputs, pills | 10px |
-| Nested chip inside a pill row | 6px (10 − padding) |
-
-`outer = inner + padding` — verified on every nested pair (the classic "off" feeling comes from breaking this).
-
-### 4.2 Elevation
-
-```css
---shadow-card: 0 1px 2px oklch(0 0 0 / 0.05), 0 4px 12px oklch(0 0 0 / 0.06);
---shadow-pop:  0 2px 4px oklch(0 0 0 / 0.06), 0 12px 32px oklch(0 0 0 / 0.12);
-```
-Layered, transparent shadows for depth (cards, dropdowns, modals). **Borders for structure only**: table separators, input borders, focus rings, selected-state outline. Dark mode: shadows become near-invisible → depth carried by `--surface` vs `--bg` lightness gap + 1px borders.
-
-### 4.3 Buttons
-
-| Variant | Style |
-|---|---|
-| Primary | Fill `--primary-600`, white text, hover `--primary-700`, press `scale(0.96)` |
-| Secondary | `--surface` fill, `--border` border, text `--text-primary` |
-| Destructive | Fill `--danger-600` — only in confirmation dialogs |
-| Ghost | Text-only, `--text-secondary`, hover bg `--bg` |
-
-One primary per view. All labels verb-first (see ux-writing.md). Icon buttons carry `aria-label` + tooltip.
-
-### 4.4 Status pills
-
-Tinted bg (100-level) + 600-level text + 1px same-hue border: `Paid`, `Due soon`, `Overdue`, `Chasing`, `Scheduled`, `Paused`. Pill = `text-xs`, uppercase off (sentence case reads calmer), `white-space: nowrap`. Never filled-saturated — they must not compete with the primary action.
-
-### 4.5 Icons (Lucide)
-
-- Default: outline, stroke **1.5px** next to 400/500 text; **2px** next to 600 semibold labels; sizes 16 (inline), 20 (buttons/nav), 24 (empty states).
-- One library only; `currentColor` for every state (hover/active/disabled via CSS `color` + `opacity`); outline default, filled variant marks the active nav item.
-- Icon-next-to-text is optically inset (icon visually centered against cap-height, not bounding box).
-
-### 4.6 Motion
-
-| Interaction | Spec |
-|---|---|
-| State hovers | `color, background-color, border-color` 150ms `ease-out` — never `transition: all` |
-| Button press | `scale(0.96)` via `active:`, transform 100ms |
-| Dashboard first load | Cards/rows stagger-enter ~100ms apart, `translateY(4px)→0` + opacity, `ease-out`; **once only** |
-| New draft appears | Same enter values; icon swap animates `scale 0.25→1`, `opacity 0→1`, `blur 4px→0` |
-| Exits (row dismissed) | Subtle: `translateY(-4px)` + fade 120ms — softer than enter |
-| "Lunas moment" | Invoice row: danger→success pill crossfade + check icon scale-in; confetti **rejected** — restraint |
-| Reduced motion | `prefers-reduced-motion: reduce` → all transforms/fades become instant; color change remains (static cue always accompanies motion) |
-
-No staggered motion on high-frequency interactions (typing, table sorting). No `will-change` except on the count-up counter if first-frame stutter is observed.
-
-### 4.7 Focus
-
-`focus-visible` ring: `2px` `--primary-600` offset 2px, visible in both modes — keyboard operability is part of the demo story (core loop fully keyboard-driven).
-
-### 4.8 Empty & loading states
-
-Every empty state (per ux-writing.md): one-line orientation + muted explanation + one verb-first action. Table loading: 3 skeleton rows shimmering 1.2s max, replaced progressively.
-
----
-
-## 5. The "Lunas moment" (signature state)
-
-When reconciliation matches a payment: row background crossfades `danger-100 → primary-100`, status pill flips `Overdue → Paid`, check icon scales in, recovered counter ticks up with tabular digits, and a one-time toast reads from the ux-writing inventory. Total elapsed ≤ 1.2s. This is the emotional peak of the demo — restraint everywhere else makes it land.
+Design language: [oa-design](https://github.com/OpenLabs-so/oa-design) by
+Voprex Labs / Open Analytics, MIT — vendored at `docs/design/oa-design/` with
+Lunas token substitutions documented in §1. Credited in README and the demo video.
