@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { createRoute, Link, useParams } from "@tanstack/react-router";
-import { ArrowLeft, Pause, Play, BadgeCheck } from "lucide-react";
+import { ArrowLeft, Pause, Play, BadgeCheck, ClipboardPaste } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Route as rootRoute } from "./__root";
 import { Card } from "@/components/card";
 import { Button } from "@/components/button";
 import { StatusPill } from "@/components/status-pill";
 import { useToast } from "@/components/toast";
+import { RecordPaymentModal } from "@/components/record-payment-modal";
 import { ApiError, api } from "@/api/client";
 import { money, fmtDate } from "@/lib/format";
 
@@ -15,6 +17,7 @@ function InvoiceDetailPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
 
+  const [recording, setRecording] = useState(false);
   const invoice = useQuery({ queryKey: ["invoice", invoiceId], queryFn: () => api.invoice(invoiceId) });
   const activity = useQuery({ queryKey: ["activity", invoiceId], queryFn: () => api.activity(invoiceId) });
 
@@ -71,7 +74,10 @@ function InvoiceDetailPage() {
                   <Pause size={14} strokeWidth={1.5} aria-hidden="true" /> Pause chasing
                 </Button>
               )}
-              <Button variant="primary" onClick={() => setStatus("paid")}>
+              <Button variant="primary" onClick={() => setRecording(true)}>
+                <ClipboardPaste size={14} strokeWidth={1.5} aria-hidden="true" /> Record payment
+              </Button>
+              <Button variant="ghost" onClick={() => setStatus("paid")}>
                 <BadgeCheck size={14} strokeWidth={1.5} aria-hidden="true" /> Mark as settled
               </Button>
             </div>
@@ -114,6 +120,7 @@ function InvoiceDetailPage() {
           </Card>
         </>
       )}
+      <RecordPaymentModal open={recording} onClose={() => setRecording(false)} presetInvoiceId={invoiceId} />
     </main>
   );
 }

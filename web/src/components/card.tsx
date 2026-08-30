@@ -14,11 +14,13 @@ export function KpiCard({
   value,
   sub,
   tone = "neutral",
+  children,
 }: {
   label: string;
   value: string | null;
   sub?: string;
   tone?: "neutral" | "success" | "warning";
+  children?: React.ReactNode;
 }) {
   const toneClass =
     tone === "success" ? "text-success" : tone === "warning" ? "text-warning" : "text-foreground";
@@ -36,6 +38,7 @@ export function KpiCard({
           {value ?? "—"}
         </p>
         {sub ? <p className="mt-1.5 text-xs text-muted-foreground">{sub}</p> : null}
+        {children}
       </div>
     </Card>
   );

@@ -17,6 +17,7 @@ import (
 
 	"github.com/AlfinRy/lunas/internal/agent"
 	db "github.com/AlfinRy/lunas/internal/db"
+	"github.com/AlfinRy/lunas/internal/recon"
 	"github.com/AlfinRy/lunas/internal/config"
 	"github.com/AlfinRy/lunas/internal/seed"
 )
@@ -83,10 +84,12 @@ func (h *Handler) GetDashboard(ctx context.Context, _ GetDashboardRequestObject)
 	counts.AwaitingApproval = int(pending)
 
 	dso := h.rollingDSO(ctx, today)
+	trend := h.dsoTrend(ctx, today)
 
 	return GetDashboard200JSONResponse{
 		Counts:           counts,
 		DsoDays:          dso,
+		DsoTrend:         &trend,
 		OutstandingCents: int(outstanding),
 		OverdueCents:     int(overdue),
 		RecoveredCents:   toInt(recovered),
@@ -114,6 +117,45 @@ func (h *Handler) rollingDSO(ctx context.Context, today string) float32 {
 		return 0
 	}
 	return float32(sum / float64(n))
+}
+
+// dsoTrend builds the 14-point DSO series for the sparkline: for each of the
+// last 14 days, average (paid_on − issued_on) over payments settled in the 30
+// days ending that day.
+func (h *Handler) dsoTrend(ctx context.Context, today string) []struct {
+	Date    oatypes.Date `json:"date"`
+	DsoDays float32      `json:"dso_days"`
+} {
+	stats, err := h.q.PaymentStats(ctx)
+	if err != nil {
+		return nil
+	}
+	out := make([]struct {
+		Date    oatypes.Date `json:"date"`
+		DsoDays float32      `json:"dso_days"`
+	}, 0, 14)
+	for i := 13; i >= 0; i-- {
+		day := addDaysGo(today, -i)
+		var sum float64
+		var n int
+		for _, r := range stats {
+			age := daysBetween(r.PaidOn, day)
+			if age < 0 || age > 30 {
+				continue
+			}
+			sum += float64(daysBetween(r.IssuedOn, r.PaidOn))
+			n++
+		}
+		dso := float32(0)
+		if n > 0 {
+			dso = float32(sum / float64(n))
+		}
+		out = append(out, struct {
+			Date    oatypes.Date `json:"date"`
+			DsoDays float32      `json:"dso_days"`
+		}{Date: apiDate(day), DsoDays: dso})
+	}
+	return out
 }
 
 // clients --------------------------------------------------------------------
@@ -687,12 +729,163 @@ func (h *Handler) act(ctx context.Context, invoiceID int64, typ, msg string) {
 	_ = h.q.InsertActivity(ctx, db.InsertActivityParams{InvoiceID: id, Type: typ, Message: msg})
 }
 
-// W3: payment reconciliation — ships in week 3.
+// payment reconciliation (F5) — the matcher that tells the agent to stop ------
 
-func (h *Handler) ParsePayment(context.Context, ParsePaymentRequestObject) (ParsePaymentResponseObject, error) {
-	return nil, &echo.HTTPError{Code: 501, Message: "Reconciliation ships in week 3."}
+func (h *Handler) ParsePayment(ctx context.Context, req ParsePaymentRequestObject) (ParsePaymentResponseObject, error) {
+	text := strings.TrimSpace(req.Body.Text)
+	if text == "" {
+		return ParsePayment422JSONResponse(Error{Message: "Paste the payment notification first."}), nil
+	}
+	today := h.simToday(ctx)
+	parsed, ok := recon.Parse(text, today)
+	if !ok {
+		return ParsePayment422JSONResponse(Error{Message: "Couldn't find an amount in that text. Include the paid amount and try again."}), nil
+	}
+
+	open, err := h.q.ListOpenForMatch(ctx)
+	if err != nil {
+		return nil, internal(err)
+	}
+	cands := recon.Match(parsed, nil, toReconOpen(open), text)
+
+	matches := make([]struct {
+		AmountCents   int                                 `json:"amount_cents"`
+		ClientName    string                              `json:"client_name"`
+		Confidence    PaymentParseResultMatchesConfidence `json:"confidence"`
+		DaysOverdue   *int                                `json:"days_overdue,omitempty"`
+		InvoiceId     int                                 `json:"invoice_id"`
+		InvoiceNumber string                              `json:"invoice_number"`
+	}, 0, len(cands))
+	for _, c := range cands {
+		inv, err := h.q.GetInvoice(ctx, c.InvoiceID)
+		if err != nil {
+			continue
+		}
+		daysO := daysOverdueFor(inv.DueOn, today)
+		matches = append(matches, struct {
+			AmountCents   int                                 `json:"amount_cents"`
+			ClientName    string                              `json:"client_name"`
+			Confidence    PaymentParseResultMatchesConfidence `json:"confidence"`
+			DaysOverdue   *int                                `json:"days_overdue,omitempty"`
+			InvoiceId     int                                 `json:"invoice_id"`
+			InvoiceNumber string                              `json:"invoice_number"`
+		}{
+			InvoiceId: int(c.InvoiceID), InvoiceNumber: c.InvoiceNo, ClientName: c.ClientName,
+			AmountCents: int(c.AmountCents), DaysOverdue: &daysO,
+			Confidence: PaymentParseResultMatchesConfidence(c.Confidence),
+		})
+	}
+
+	payerHint := parsed.PayerHint
+	paidOn := apiDate(parsed.PaidOn)
+	res := PaymentParseResult{
+		Parsed: struct {
+			AmountCents int                 `json:"amount_cents"`
+			PaidOn      *oatypes.Date       `json:"paid_on,omitempty"`
+			PayerHint   *string             `json:"payer_hint,omitempty"`
+		}{AmountCents: int(parsed.AmountCents), PayerHint: &payerHint, PaidOn: &paidOn},
+		Matches: matches,
+	}
+	return ParsePayment200JSONResponse(res), nil
 }
 
-func (h *Handler) ReconcilePayment(context.Context, ReconcilePaymentRequestObject) (ReconcilePaymentResponseObject, error) {
-	return nil, &echo.HTTPError{Code: 501, Message: "Reconciliation ships in week 3."}
+func (h *Handler) ReconcilePayment(ctx context.Context, req ReconcilePaymentRequestObject) (ReconcilePaymentResponseObject, error) {
+	b := req.Body
+	inv, err := h.q.GetInvoice(ctx, int64(b.InvoiceId))
+	if errors.Is(err, errNoRows) {
+		return ReconcilePayment404JSONResponse{NotFoundJSONResponse(errMessage("Invoice not found."))}, nil
+	}
+	if err != nil {
+		return nil, internal(err)
+	}
+	if inv.Status == "paid" {
+		return nil, &echo.HTTPError{Code: 409, Message: "This invoice is already settled."}
+	}
+	if inv.Status == "written_off" {
+		return nil, &echo.HTTPError{Code: 409, Message: "This invoice was written off — settle it manually if it was paid."}
+	}
+
+	paidOn := h.simToday(ctx)
+	if b.PaidOn != nil {
+		paidOn = b.PaidOn.Time.Format("2006-01-02")
+	}
+	source := "manual"
+	if b.Source != nil {
+		source = string(*b.Source)
+	}
+
+	pay, err := h.q.CreatePayment(ctx, db.CreatePaymentParams{
+		InvoiceID: nullInt64(inv.ID), AmountCents: int64(b.AmountCents), PaidOn: paidOn,
+		Source: source,
+	})
+	if err != nil {
+		return nil, internal(err)
+	}
+
+	remaining := inv.AmountCents - inv.AmountPaidCents
+	var statusAfter string
+	switch {
+	case int64(b.AmountCents) >= remaining:
+		if err := h.q.ApplyPayment(ctx, db.ApplyPaymentParams{
+			AmountPaidCents: int64(b.AmountCents), Status: "paid", ID: inv.ID,
+		}); err != nil {
+			return nil, internal(err)
+		}
+		// The agent stops instantly: no pending draft survives settlement.
+		_ = h.q.CancelPendingDrafts(ctx, inv.ID)
+		statusAfter = "paid"
+		h.act(ctx, inv.ID, "invoice_settled",
+			fmt.Sprintf("Invoice %s settled — %s recovered. Chasing stopped.", inv.Number, money(int64(b.AmountCents), inv.Currency)))
+	default:
+		if err := h.q.ApplyPartialPayment(ctx, db.ApplyPartialPaymentParams{
+			AmountPaidCents: int64(b.AmountCents), ID: inv.ID,
+		}); err != nil {
+			return nil, internal(err)
+		}
+		statusAfter = inv.Status
+		h.act(ctx, inv.ID, "payment_detected",
+			fmt.Sprintf("Partial payment of %s recorded — Lunas keeps chasing the remainder.", money(int64(b.AmountCents), inv.Currency)))
+	}
+
+	confidence := strPtrVal(b.Confidence)
+	rawText := strPtrVal(b.RawText)
+	return ReconcilePayment201JSONResponse(Payment{
+		Id: int(pay.ID), InvoiceId: int(inv.ID), AmountCents: int(b.AmountCents),
+		PaidOn: apiDate(paidOn), Source: PaymentSource(source), Confidence: &confidence, RawText: &rawText,
+		InvoiceStatusAfter: InvoiceStatus(statusAfter),
+	}), nil
+}
+
+func toReconOpen(rows []db.ListOpenForMatchRow) []recon.OpenInvoice {
+	out := make([]recon.OpenInvoice, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, recon.OpenInvoice{
+			InvoiceID: r.InvoiceID, InvoiceNo: r.InvoiceNo, ClientID: r.ClientID,
+			ClientName: r.ClientName, AmountCents: r.AmountCents, AmountPaid: r.AmountPaidCents,
+			DueOn: r.DueOn,
+		})
+	}
+	return out
+}
+
+func daysOverdueFor(dueOn, today string) int {
+	d := daysBetween(dueOn, today)
+	if d < 0 {
+		return 0
+	}
+	return d
+}
+
+func strPtrVal(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
+func money(cents int64, currency string) string {
+	if currency == "USD" {
+		return "$" + agent.FormatAmount(cents)
+	}
+	return currency + " " + agent.FormatAmount(cents)
 }

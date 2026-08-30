@@ -410,6 +410,12 @@ export interface components {
              * @description The demo clock the numbers are computed against
              */
             sim_now: string;
+            /** @description 14-day DSO series for the sparkline */
+            dso_trend?: {
+                /** Format: date */
+                date: string;
+                dso_days: number;
+            }[];
         };
         Activity: {
             /** Format: int64 */

@@ -350,9 +350,15 @@ type Dashboard struct {
 	} `json:"counts"`
 
 	// DsoDays 30-day rolling Days Sales Outstanding
-	DsoDays          float32 `json:"dso_days"`
-	OutstandingCents int     `json:"outstanding_cents"`
-	OverdueCents     int     `json:"overdue_cents"`
+	DsoDays float32 `json:"dso_days"`
+
+	// DsoTrend 14-day DSO series for the sparkline
+	DsoTrend *[]struct {
+		Date    openapi_types.Date `json:"date"`
+		DsoDays float32            `json:"dso_days"`
+	} `json:"dso_trend,omitempty"`
+	OutstandingCents int `json:"outstanding_cents"`
+	OverdueCents     int `json:"overdue_cents"`
 
 	// RecoveredCents Lifetime sum of payments linked to invoices (the counter)
 	RecoveredCents int `json:"recovered_cents"`

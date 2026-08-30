@@ -62,4 +62,15 @@ export const api = {
   outbox: () => request<components["schemas"]["OutboxEmail"][]>("/api/outbox"),
   simulateAdvance: (body: SimulateAdvanceBody) =>
     request<Settings>("/api/simulate/advance", { method: "POST", body: JSON.stringify(body) }),
+  parsePayment: (text: string) =>
+    request<components["schemas"]["PaymentParseResult"]>("/api/payments/parse", {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    }),
+  reconcilePayment: (body: components["schemas"]["PaymentInput"]) =>
+    request<components["schemas"]["Payment"]>("/api/payments", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  resetDemo: () => request<{ ok: boolean }>("/api/demo/reset", { method: "POST" }),
 };

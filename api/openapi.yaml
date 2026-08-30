@@ -637,6 +637,18 @@ components:
           type: string
           format: date
           description: The demo clock the numbers are computed against
+        dso_trend:
+          type: array
+          description: 14-day DSO series for the sparkline
+          items:
+            type: object
+            required: [date, dso_days]
+            properties:
+              date:
+                type: string
+                format: date
+              dso_days:
+                type: number
 
     Activity:
       type: object
