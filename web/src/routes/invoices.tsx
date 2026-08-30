@@ -1,13 +1,54 @@
+import { useState } from "react";
+import { Plus } from "lucide-react";
 import { createRoute } from "@tanstack/react-router";
 import { Route as rootRoute } from "./__root";
+import { Card } from "@/components/card";
+import { Button } from "@/components/button";
+import { InvoiceTable } from "@/components/invoice-table";
+import { AddInvoiceModal } from "@/components/add-invoice-modal";
+import { useInvoices } from "@/api/queries";
 
-function Page() {
+function InvoicesPage() {
+  const invoices = useInvoices();
+  const [adding, setAdding] = useState(false);
+
   return (
     <main className="mx-auto flex max-w-[1200px] flex-col gap-6">
-      <h1 className="text-[26px] font-medium tracking-tight">Invoices</h1>
-      <p className="text-sm text-muted-foreground">Ships in week 2 of the build plan.</p>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-[26px] font-medium leading-tight tracking-tight">Invoices</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Every outstanding and settled invoice, oldest due first.
+          </p>
+        </div>
+        <Button variant="primary" onClick={() => setAdding(true)}>
+          <Plus size={15} strokeWidth={1.5} aria-hidden="true" />
+          Add invoice
+        </Button>
+      </header>
+
+      <Card className="p-0">
+        <InvoiceTable invoices={invoices.data} loading={invoices.isPending} skeletonRows={6} />
+        {invoices.data && invoices.data.length === 0 ? (
+          <div className="flex flex-col items-start gap-1 border-t border-border px-5 py-10">
+            <p className="font-medium">No invoices yet</p>
+            <p className="text-sm text-muted-foreground">
+              Add an invoice and Lunas will start planning the first chase.
+            </p>
+            <Button variant="primary" className="mt-3" onClick={() => setAdding(true)}>
+              Add invoice
+            </Button>
+          </div>
+        ) : null}
+      </Card>
+
+      <AddInvoiceModal open={adding} onClose={() => setAdding(false)} />
     </main>
   );
 }
 
-export const Route = createRoute({ getParentRoute: () => rootRoute, path: "/invoices", component: Page });
+export const Route = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/invoices",
+  component: InvoicesPage,
+});

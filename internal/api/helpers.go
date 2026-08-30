@@ -46,6 +46,9 @@ func (fe fieldErrors) orEmpty() map[string][]string {
 }
 
 func validEmail(s string) bool {
+	if strings.ContainsAny(s, " \t\r\n") {
+		return false
+	}
 	at := strings.IndexByte(s, '@')
 	return at > 0 && at < len(s)-1 && strings.Contains(s[at:], ".")
 }

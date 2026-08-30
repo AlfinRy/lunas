@@ -44,6 +44,8 @@ export const api = {
   invoice: (id: number) => request<Invoice>(`/api/invoices/${id}`),
   createInvoice: (body: components["schemas"]["InvoiceInput"]) =>
     request<Invoice>("/api/invoices", { method: "POST", body: JSON.stringify(body) }),
+  updateInvoice: (id: number, body: components["schemas"]["InvoiceUpdate"]) =>
+    request<Invoice>(`/api/invoices/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   activity: (id: number) => request<Activity[]>(`/api/invoices/${id}/activity`),
   clients: () => request<Client[]>("/api/clients"),
   settings: () => request<Settings>("/api/settings"),

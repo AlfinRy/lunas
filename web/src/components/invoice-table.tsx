@@ -1,4 +1,5 @@
 import type { Invoice } from "@/api/client";
+import { Link } from "@tanstack/react-router";
 import { Skeleton } from "./card";
 import { StatusPill } from "./status-pill";
 import { money, fmtDate } from "@/lib/format";
@@ -59,7 +60,15 @@ export function InvoiceTable({
             </div>
           ))
         : (invoices ?? []).map((inv) => (
-            <Row key={inv.id} invoice={inv} />
+            <Link
+              key={inv.id}
+              to="/invoices/$id"
+              params={{ id: String(inv.id) }}
+              className="contents"
+              aria-label={`${inv.client_name}, invoice ${inv.number}`}
+            >
+              <Row invoice={inv} />
+            </Link>
           ))}
     </div>
   );

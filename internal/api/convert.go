@@ -58,7 +58,7 @@ func (s *scoreCalc) reliability() Reliability {
 	switch avg := s.avgLate(); {
 	case avg <= 1:
 		return PaysOnTime
-	case avg <= 7:
+	case avg <= 15:
 		return UsuallyLate
 	default:
 		return ChronicallyLate
