@@ -13,7 +13,7 @@ function InvoicesPage() {
   const [adding, setAdding] = useState(false);
 
   return (
-    <main className="mx-auto flex max-w-[1200px] flex-col gap-6">
+    <main className="flex flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[26px] font-medium leading-tight tracking-tight">Invoices</h1>

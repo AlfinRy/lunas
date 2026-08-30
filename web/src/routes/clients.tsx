@@ -16,7 +16,7 @@ function ClientsPage() {
   const invoices = useInvoices();
 
   return (
-    <main className="mx-auto flex max-w-[1200px] flex-col gap-6">
+    <main className="flex flex-col gap-6">
       <header>
         <h1 className="text-[26px] font-medium leading-tight tracking-tight">Clients</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">

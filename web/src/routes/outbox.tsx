@@ -15,7 +15,7 @@ function OutboxPage() {
   const active = emails.find((e) => e.id === selected) ?? emails[0];
 
   return (
-    <main className="mx-auto flex max-w-[1000px] flex-col gap-6">
+    <main className="flex flex-col gap-6">
       <header>
         <h1 className="text-[26px] font-medium leading-tight tracking-tight">Outbox</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">Every chase Lunas has sent, newest first.</p>

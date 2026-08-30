@@ -42,7 +42,7 @@ function SettingsPage() {
   const s = settings.data;
 
   return (
-    <main className="mx-auto flex max-w-[640px] flex-col gap-6">
+    <main className="flex w-full max-w-[640px] flex-col gap-6">
       <header>
         <h1 className="text-[26px] font-medium leading-tight tracking-tight">Settings</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">How Lunas signs, waits, and escalates.</p>
