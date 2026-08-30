@@ -363,6 +363,8 @@ paths:
                   type: string
                   format: date
       responses:
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "200":
           description: OK
           content:

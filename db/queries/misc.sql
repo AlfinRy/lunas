@@ -31,10 +31,6 @@ SELECT COUNT(*) FROM clients;
 -- name: CountPendingDrafts :one
 SELECT COUNT(*) FROM email_drafts WHERE status = 'pending';
 
--- name: PaymentStats :many
-SELECT p.invoice_id, p.amount_cents, p.paid_on, i.client_id, i.issued_on, i.due_on
-  FROM payments p JOIN invoices i ON i.id = p.invoice_id
- WHERE i.status = 'paid';
 
 -- name: ResetDemoData :exec
 DELETE FROM outbox_emails; DELETE FROM email_drafts; DELETE FROM payments; DELETE FROM activities; DELETE FROM invoices; DELETE FROM clients;

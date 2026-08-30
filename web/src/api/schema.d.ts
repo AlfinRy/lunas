@@ -1046,6 +1046,7 @@ export interface operations {
                     "application/json": components["schemas"]["Settings"];
                 };
             };
+            400: components["responses"]["BadRequest"];
         };
     };
     resetDemo: {

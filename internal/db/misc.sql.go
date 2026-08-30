@@ -230,51 +230,6 @@ func (q *Queries) ListActivityForInvoice(ctx context.Context, invoiceID sql.Null
 	return items, nil
 }
 
-const paymentStats = `-- name: PaymentStats :many
-SELECT p.invoice_id, p.amount_cents, p.paid_on, i.client_id, i.issued_on, i.due_on
-  FROM payments p JOIN invoices i ON i.id = p.invoice_id
- WHERE i.status = 'paid'
-`
-
-type PaymentStatsRow struct {
-	InvoiceID   sql.NullInt64
-	AmountCents int64
-	PaidOn      string
-	ClientID    int64
-	IssuedOn    string
-	DueOn       string
-}
-
-func (q *Queries) PaymentStats(ctx context.Context) ([]PaymentStatsRow, error) {
-	rows, err := q.db.QueryContext(ctx, paymentStats)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []PaymentStatsRow
-	for rows.Next() {
-		var i PaymentStatsRow
-		if err := rows.Scan(
-			&i.InvoiceID,
-			&i.AmountCents,
-			&i.PaidOn,
-			&i.ClientID,
-			&i.IssuedOn,
-			&i.DueOn,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const recoveredTotal = `-- name: RecoveredTotal :one
 SELECT COALESCE(SUM(p.amount_cents), 0) AS total FROM payments p
   JOIN invoices i ON i.id = p.invoice_id

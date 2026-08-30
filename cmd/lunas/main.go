@@ -20,6 +20,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	assets "github.com/AlfinRy/lunas"
+	"github.com/AlfinRy/lunas/internal/agent"
 	"github.com/AlfinRy/lunas/internal/api"
 	"github.com/AlfinRy/lunas/internal/config"
 	db "github.com/AlfinRy/lunas/internal/db"
@@ -57,7 +58,16 @@ func main() {
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORS()) // dev: Vite proxy on 5173
 
-	h := api.New(q, cfg)
+	var provider agent.DraftProvider = agent.TemplateProvider{}
+	if cfg.LLMAPIKey != "" {
+		provider = agent.ResilientProvider{
+			Primary: &agent.OpenAIProvider{BaseURL: cfg.LLMBaseURL, APIKey: cfg.LLMAPIKey, Model: cfg.LLMModel},
+			Floor:   agent.TemplateProvider{},
+		}
+	}
+	engine := &agent.Engine{Q: q, Provider: provider}
+
+	h := api.New(q, cfg, engine)
 	strict := api.NewStrictHandler(h, nil)
 	api.RegisterHandlersWithBaseURL(e, strict, "/api")
 

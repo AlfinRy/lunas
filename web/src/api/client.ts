@@ -6,6 +6,8 @@ export type Client = components["schemas"]["Client"];
 export type Activity = components["schemas"]["Activity"];
 export type Settings = components["schemas"]["Settings"];
 export type InvoiceStatus = components["schemas"]["InvoiceStatus"];
+export type ChaseStage = components["schemas"]["ChaseStage"];
+export type SimulateAdvanceBody = { days?: number; to_date?: string };
 
 export class ApiError extends Error {
   fields?: Record<string, string[]>;
@@ -49,4 +51,15 @@ export const api = {
   activity: (id: number) => request<Activity[]>(`/api/invoices/${id}/activity`),
   clients: () => request<Client[]>("/api/clients"),
   settings: () => request<Settings>("/api/settings"),
+  updateSettings: (body: components["schemas"]["SettingsUpdate"]) =>
+    request<Settings>("/api/settings", { method: "PATCH", body: JSON.stringify(body) }),
+  agentInbox: () =>
+    request<components["schemas"]["AgentInbox"]>("/api/agent/inbox"),
+  approveDraft: (id: number) =>
+    request<components["schemas"]["OutboxEmail"]>(`/api/agent/drafts/${id}/approve`, { method: "POST" }),
+  skipDraft: (id: number) =>
+    request<components["schemas"]["Draft"]>(`/api/agent/drafts/${id}/skip`, { method: "POST" }),
+  outbox: () => request<components["schemas"]["OutboxEmail"][]>("/api/outbox"),
+  simulateAdvance: (body: SimulateAdvanceBody) =>
+    request<Settings>("/api/simulate/advance", { method: "POST", body: JSON.stringify(body) }),
 };

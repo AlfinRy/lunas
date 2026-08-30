@@ -8,6 +8,8 @@ import {
   Send,
   Settings as SettingsIcon,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/api/client";
 
 type RouterContext = { queryClient: QueryClient };
 
@@ -19,6 +21,7 @@ const nav = [
   { to: "/outbox", label: "Outbox", icon: Send },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
 ] as const;
+
 
 function Shell() {
   return (
@@ -48,16 +51,21 @@ function Shell() {
             </span>
             <span className="text-[15px] font-medium tracking-tight">Lunas</span>
           </Link>
-          {nav.map(({ to, label, icon: Icon }) => (
+          {nav.map((item) => {
+            const Icon = item.icon;
+            const badge = "badge" in item ? item.badge : undefined;
+            return (
             <Link
-              key={to}
-              to={to}
+              key={item.to}
+              to={item.to}
               className="group flex items-center gap-2.5 rounded-pill px-3 py-1.5 text-[13.5px] text-muted-foreground transition-colors duration-150 ease-out hover:bg-accent-wash hover:text-foreground aria-[current=page]:bg-primary-soft aria-[current=page]:text-foreground"
             >
               <Icon size={16} strokeWidth={1.5} className="shrink-0" aria-hidden="true" />
-              {label}
+              {item.label}
+              {badge === "agent" ? <AgentBadge /> : null}
             </Link>
-          ))}
+            );
+          })}
           <p className="mt-auto px-3 text-xs text-muted-foreground">
             The AI collections agent
             <br />
@@ -70,6 +78,20 @@ function Shell() {
         </div>
       </div>
     </div>
+  );
+}
+
+function AgentBadge() {
+  const dash = useQuery({ queryKey: ["dashboard"], queryFn: api.dashboard, staleTime: 10_000 });
+  const n = dash.data?.counts.awaiting_approval ?? 0;
+  if (!n) return null;
+  return (
+    <span
+      aria-label={`${n} awaiting approval`}
+      className="tnum ms-auto rounded-pill bg-primary px-1.5 py-0.5 text-[10px] leading-none text-primary-foreground"
+    >
+      {n}
+    </span>
   );
 }
 

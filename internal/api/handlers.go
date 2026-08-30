@@ -7,23 +7,28 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	oatypes "github.com/oapi-codegen/runtime/types"
+	"github.com/labstack/echo/v4"
 
+	"github.com/AlfinRy/lunas/internal/agent"
 	db "github.com/AlfinRy/lunas/internal/db"
 	"github.com/AlfinRy/lunas/internal/config"
 	"github.com/AlfinRy/lunas/internal/seed"
 )
 
 type Handler struct {
-	q   *db.Queries
-	cfg *config.Config
+	q      *db.Queries
+	cfg    *config.Config
+	engine *agent.Engine
 }
 
-func New(q *db.Queries, cfg *config.Config) *Handler {
-	return &Handler{q: q, cfg: cfg}
+func New(q *db.Queries, cfg *config.Config, engine *agent.Engine) *Handler {
+	return &Handler{q: q, cfg: cfg, engine: engine}
 }
 
 // health ---------------------------------------------------------------------
@@ -298,6 +303,10 @@ func (h *Handler) CreateInvoice(ctx context.Context, req CreateInvoiceRequestObj
 	if err != nil {
 		return nil, internal(err)
 	}
+	// The agent plans this invoice immediately (F3.4).
+	if settings, serr := h.q.GetSettings(ctx); serr == nil {
+		_, _ = h.engine.Run(ctx, h.simToday(ctx), settings.GlobalMode)
+	}
 	return CreateInvoice201JSONResponse(invoiceFromFull(full, h.simToday(ctx))), nil
 }
 
@@ -461,26 +470,229 @@ func (h *Handler) ResetDemo(ctx context.Context, _ ResetDemoRequestObject) (Rese
 	return ResetDemo200JSONResponse{Ok: true}, nil
 }
 
-// W2/W3 stubs ----------------------------------------------------------------
+// agent inbox (W2) — implementations live below
 
-func (h *Handler) GetAgentInbox(context.Context, GetAgentInboxRequestObject) (GetAgentInboxResponseObject, error) {
-	return nil, errNotYet()
+// agent inbox ----------------------------------------------------------------
+
+func (h *Handler) GetAgentInbox(ctx context.Context, _ GetAgentInboxRequestObject) (GetAgentInboxResponseObject, error) {
+	today := h.simToday(ctx)
+	rows, err := h.q.ListOpenInvoicesWithPayer(ctx)
+	if err != nil {
+		return nil, internal(err)
+	}
+	buckets, err := h.engineBuckets(ctx)
+	if err != nil {
+		return nil, internal(err)
+	}
+
+	var plans []PlanCard
+	for _, r := range rows {
+		in := agent.Input{
+			Today: today, DueOn: r.DueOn, Status: r.Status,
+			Reliability: buckets[r.ClientID], WarmRelation: warmNote(r.RelationshipNote),
+		}
+		if r.CurrentStage.Valid {
+			in.LastSent = agent.Stage(r.CurrentStage.String)
+		}
+		d := agent.Decide(in)
+		if d.Action != agent.Schedule {
+			continue
+		}
+		plans = append(plans, PlanCard{
+			InvoiceId: int(r.ID), InvoiceNumber: r.Number, ClientName: r.ClientName,
+			AmountCents: int(r.AmountCents), Stage: ChaseStage(d.Stage),
+			PlannedOn: apiDate(d.ActOn), Reasoning: d.Reasoning,
+		})
+	}
+
+	draftRows, err := h.q.ListPendingDraftsWithInvoice(ctx)
+	if err != nil {
+		return nil, internal(err)
+	}
+	drafts := make([]Draft, 0, len(draftRows))
+	for _, d := range draftRows {
+		drafts = append(drafts, Draft{
+			Id: int(d.ID), InvoiceId: int(d.InvoiceID), InvoiceNumber: d.InvoiceNumber,
+			ClientName: d.ClientName, ClientEmail: d.ClientEmail,
+			Stage: ChaseStage(d.Stage), Subject: d.Subject, Body: d.Body,
+			Status: DraftStatus(d.Status), CreatedAt: parseTS(d.CreatedAt),
+		})
+	}
+	return GetAgentInbox200JSONResponse(AgentInbox{Plans: plans, Drafts: drafts}), nil
 }
-func (h *Handler) ApproveDraft(context.Context, ApproveDraftRequestObject) (ApproveDraftResponseObject, error) {
-	return nil, errNotYet()
+
+func (h *Handler) ApproveDraft(ctx context.Context, req ApproveDraftRequestObject) (ApproveDraftResponseObject, error) {
+	d, err := h.q.GetDraftWithInvoice(ctx, req.Id)
+	if errors.Is(err, errNoRows) {
+		return ApproveDraft404JSONResponse{NotFoundJSONResponse(errMessage("Draft not found."))}, nil
+	}
+	if err != nil {
+		return nil, internal(err)
+	}
+	if d.Status != "pending" {
+		return ApproveDraft409JSONResponse{ConflictJSONResponse(errMessage("This draft was already handled."))}, nil
+	}
+	if err := h.engine.SendDraft(ctx, req.Id); err != nil {
+		return nil, internal(err)
+	}
+	return ApproveDraft200JSONResponse(OutboxEmail{
+		Id: int(d.ID), InvoiceNumber: d.InvoiceNumber, ToName: d.ClientName,
+		ToEmail: d.ClientEmail, Subject: d.Subject, Body: d.Body,
+		SentAt: time.Now().UTC(),
+	}), nil
 }
-func (h *Handler) SkipDraft(context.Context, SkipDraftRequestObject) (SkipDraftResponseObject, error) {
-	return nil, errNotYet()
+
+func (h *Handler) SkipDraft(ctx context.Context, req SkipDraftRequestObject) (SkipDraftResponseObject, error) {
+	d, err := h.q.GetDraftWithInvoice(ctx, req.Id)
+	if errors.Is(err, errNoRows) {
+		return nil, &echo.HTTPError{Code: 404, Message: "Draft not found."}
+	}
+	if err != nil {
+		return nil, internal(err)
+	}
+	if d.Status != "pending" {
+		return nil, &echo.HTTPError{Code: 409, Message: "This draft was already handled."}
+	}
+	if err := h.q.MarkDraftStatus(ctx, db.MarkDraftStatusParams{Status: "skipped", ID: req.Id}); err != nil {
+		return nil, internal(err)
+	}
+	today := h.simToday(ctx)
+	if err := h.q.SetInvoiceChase(ctx, db.SetInvoiceChaseParams{
+		CurrentStage: sql.NullString{String: d.Stage, Valid: true},
+		NextActionOn: sql.NullString{String: addDaysGo(today, 1), Valid: true},
+		AgentState: "planning", ID: d.InvoiceID,
+	}); err != nil {
+		return nil, internal(err)
+	}
+	h.act(ctx, d.InvoiceID, "draft_skipped", "Skipped the "+agent.Stage(d.Stage).Label()+" — Lunas will replan tomorrow.")
+	return SkipDraft200JSONResponse(Draft{
+		Id: int(d.ID), InvoiceId: int(d.InvoiceID), InvoiceNumber: d.InvoiceNumber,
+		ClientName: d.ClientName, ClientEmail: d.ClientEmail,
+		Stage: ChaseStage(d.Stage), Subject: d.Subject, Body: d.Body,
+		Status: DraftStatus("skipped"), CreatedAt: parseTS(d.CreatedAt),
+	}), nil
 }
-func (h *Handler) ListOutbox(context.Context, ListOutboxRequestObject) (ListOutboxResponseObject, error) {
-	return nil, errNotYet()
+
+// outbox ---------------------------------------------------------------------
+
+func (h *Handler) ListOutbox(ctx context.Context, _ ListOutboxRequestObject) (ListOutboxResponseObject, error) {
+	rows, err := h.q.ListOutbox(ctx)
+	if err != nil {
+		return nil, internal(err)
+	}
+	out := make([]OutboxEmail, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, OutboxEmail{
+			Id: int(r.ID), InvoiceNumber: r.InvoiceNumber, ToName: r.ToName,
+			ToEmail: r.ToEmail, Subject: r.Subject, Body: r.Body, SentAt: parseTS(r.SentAt),
+		})
+	}
+	return ListOutbox200JSONResponse(out), nil
 }
+
+// time simulator (F7) ---------------------------------------------------------
+
+func (h *Handler) SimulateAdvance(ctx context.Context, req SimulateAdvanceRequestObject) (SimulateAdvanceResponseObject, error) {
+	base := h.simToday(ctx)
+	next := ""
+	switch {
+	case req.Body.Days != nil:
+		next = addDaysGo(base, *req.Body.Days)
+	case req.Body.ToDate != nil:
+		next = dstr(*req.Body.ToDate)
+	default:
+		return SimulateAdvance400JSONResponse{BadRequestJSONResponse(errMessage("Pass days or a to_date."))}, nil
+	}
+	if next <= base {
+		return SimulateAdvance400JSONResponse{BadRequestJSONResponse(errMessage("Pick a date after the current demo time."))}, nil
+	}
+
+	cur, err := h.q.GetSettings(ctx)
+	if err != nil {
+		return nil, internal(err)
+	}
+	s, err := h.q.UpdateSettings(ctx, db.UpdateSettingsParams{
+		SenderName:       sql.NullString{String: cur.SenderName, Valid: true},
+		SenderEmail:      sql.NullString{String: cur.SenderEmail, Valid: true},
+		DefaultTermsDays: sql.NullInt64{Int64: cur.DefaultTermsDays, Valid: true},
+		GlobalMode:       sql.NullString{String: cur.GlobalMode, Valid: true},
+		SimNow:           sql.NullString{String: next, Valid: true},
+	})
+	if err != nil {
+		return nil, internal(err)
+	}
+
+	summary, err := h.engine.Run(ctx, next, s.GlobalMode)
+	if err != nil {
+		return nil, internal(err)
+	}
+	h.act(ctx, 0, "clock_advanced", fmt.Sprintf("Demo clock advanced to %s. %s", next, summary))
+	return SimulateAdvance200JSONResponse(h.toSettings(s)), nil
+}
+
+// agent glue helpers ----------------------------------------------------------
+
+func warmNote(note string) bool { return strings.Contains(strings.ToLower(note), "warm") }
+
+func (h *Handler) engineBuckets(ctx context.Context) (map[int64]string, error) {
+	rows, err := h.q.PaymentStats(ctx)
+	if err != nil {
+		return nil, err
+	}
+	type accT struct {
+		sum   float64
+		count int
+	}
+	accs := map[int64]*accT{}
+	for _, r := range rows {
+		a := accs[r.ClientID]
+		if a == nil {
+			a = &accT{}
+			accs[r.ClientID] = a
+		}
+		a.sum += float64(daysBetween(r.DueOn, r.PaidOn))
+		a.count++
+	}
+	out := map[int64]string{}
+	for id, a := range accs {
+		if a.count < 2 {
+			continue
+		}
+		avg := a.sum / float64(a.count)
+		switch {
+		case avg <= 1:
+			out[id] = "pays_on_time"
+		case avg <= 15:
+			out[id] = "usually_late"
+		default:
+			out[id] = "chronically_late"
+		}
+	}
+	return out, nil
+}
+
+func addDaysGo(iso string, n int) string {
+	t, err := time.Parse("2006-01-02", iso)
+	if err != nil {
+		return iso
+	}
+	return t.AddDate(0, 0, n).Format("2006-01-02")
+}
+
+func (h *Handler) act(ctx context.Context, invoiceID int64, typ, msg string) {
+	var id sql.NullInt64
+	if invoiceID > 0 {
+		id = sql.NullInt64{Int64: invoiceID, Valid: true}
+	}
+	_ = h.q.InsertActivity(ctx, db.InsertActivityParams{InvoiceID: id, Type: typ, Message: msg})
+}
+
+// W3: payment reconciliation — ships in week 3.
+
 func (h *Handler) ParsePayment(context.Context, ParsePaymentRequestObject) (ParsePaymentResponseObject, error) {
-	return nil, errNotYet()
+	return nil, &echo.HTTPError{Code: 501, Message: "Reconciliation ships in week 3."}
 }
+
 func (h *Handler) ReconcilePayment(context.Context, ReconcilePaymentRequestObject) (ReconcilePaymentResponseObject, error) {
-	return nil, errNotYet()
-}
-func (h *Handler) SimulateAdvance(context.Context, SimulateAdvanceRequestObject) (SimulateAdvanceResponseObject, error) {
-	return nil, errNotYet()
+	return nil, &echo.HTTPError{Code: 501, Message: "Reconciliation ships in week 3."}
 }

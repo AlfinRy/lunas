@@ -1688,6 +1688,20 @@ func (response SimulateAdvance200JSONResponse) VisitSimulateAdvanceResponse(w ht
 	return err
 }
 
+type SimulateAdvance400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SimulateAdvance400JSONResponse) VisitSimulateAdvanceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// ApproveDraft Approve & send a draft (moves to outbox)
