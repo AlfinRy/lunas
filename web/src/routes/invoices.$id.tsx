@@ -37,7 +37,7 @@ function InvoiceDetailPage() {
   const open = inv && inv.status !== "paid" && inv.status !== "written_off";
 
   return (
-    <main className="flex w-full max-w-[720px] flex-col gap-6">
+    <main className="flex flex-col gap-6">
       <Link
         to="/invoices"
         className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"

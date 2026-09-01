@@ -20,7 +20,7 @@ function AgentPage() {
   const plans = inbox.data?.plans ?? [];
 
   return (
-    <main className="flex w-full max-w-[880px] flex-col gap-6">
+    <main className="flex flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[26px] font-medium leading-tight tracking-tight">Agent inbox</h1>

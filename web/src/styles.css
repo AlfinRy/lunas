@@ -40,6 +40,10 @@
   body {
     height: 100%;
   }
+  html {
+    /* Pages with and without scrollbars keep the same content width. */
+    scrollbar-gutter: stable;
+  }
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-weight: 400;
