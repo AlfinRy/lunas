@@ -39,6 +39,10 @@ An AI agent that autonomously manages accounts receivable:
 
 ## Quickstart
 
+Requires Go ≥ 1.25 and [Bun](https://bun.sh). No database setup — SQLite is a file.
+
+**Dev (hot reload):**
+
 ```sh
 # Terminal 1 — API on :8080 (auto-seeds demo data on first run)
 go run ./cmd/lunas
@@ -47,11 +51,31 @@ go run ./cmd/lunas
 cd web && bun install && bun run dev
 ```
 
-Zero LLM key needed — the agent runs in **template mode** out of the box
-(`LLM_API_KEY`/`LLM_BASE_URL`/`LLM_MODEL` switch on a provider when set).
+**Single binary (production):**
 
-Single-binary deploy: `cd web && bun run build && go build -o lunas ./cmd/lunas` —
-the SPA is embedded and served from the same port.
+```sh
+cd web && bun run build
+cd .. && go build -o lunas ./cmd/lunas && ./lunas   # SPA embedded, one port
+```
+
+**From your phone:** run the binary, then open `http://<laptop-ip>:8080` from any
+device on the same network (allow the port through the firewall once).
+
+**Reset the demo:** delete `lunas.db*` and restart — or Settings → Danger zone
+in the app.
+
+### Environment
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `LUNAS_PORT` | `8080` | Server port |
+| `LUNAS_DB` | `lunas.db` | SQLite file path |
+| `LLM_API_KEY` | *(empty)* | Any OpenAI-compatible key; empty = template mode |
+| `LLM_BASE_URL` | `https://api.openai.com/v1` | Swap providers freely |
+| `LLM_MODEL` | `gpt-4o-mini` | Model used for drafting |
+
+No key needed: decisions (policy engine, matcher) are deterministic Go; the LLM
+only polishes email copy and falls back to the canonical templates on any error.
 
 ## Credits
 
