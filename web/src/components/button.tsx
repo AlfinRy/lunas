@@ -1,18 +1,57 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-type Variant = "primary" | "secondary" | "ghost";
-
 /**
- * OA 02-button: pills that press. One primary per view — the jade accent is
- * spent on the single most important action; secondaries stay flat grey.
+ * The OA button (02-button), as a pill (our house style — "everything
+ * clickable that is not a card is a pill"):
+ * - press = translate-y-px + scale-0.98 — the only pointer geometry change
+ * - primary carries the bevel: fill mixed toward deep indigo at rest, pure
+ *   jade on hover, white inset highlight on top, dark seat below
+ * - loading KEEPS the label and adds a ring spinner; width never jumps
  */
+type Variant = "primary" | "secondary" | "ghost" | "destructive";
+
+const BASE =
+  "inline-flex cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap font-medium outline-none transition-all " +
+  "focus-visible:ring-[3px] focus-visible:ring-ring/50 " +
+  "disabled:pointer-events-none disabled:opacity-50 " +
+  "active:translate-y-px active:scale-[0.98] " +
+  "rounded-pill px-4 py-1.5 text-sm";
+
+const VARIANTS: Record<Variant, string> = {
+  primary:
+    "border border-[color-mix(in_srgb,var(--primary)_80%,#3a3480)] " +
+    "bg-[color-mix(in_srgb,var(--primary)_90%,#3a3480)] text-primary-foreground " +
+    "shadow-[inset_0_1px_0_rgba(255,255,255,0.22),inset_0_-1px_0_rgba(24,38,30,0.35)] " +
+    "hover:bg-primary hover:border-[color-mix(in_srgb,var(--primary)_70%,#3a3480)]",
+  secondary:
+    "border border-transparent bg-secondary text-secondary-foreground " +
+    "hover:bg-[color-mix(in_srgb,var(--secondary)_95%,var(--ink))]",
+  ghost: "text-muted-foreground hover:bg-accent-wash hover:text-foreground",
+  destructive:
+    "border border-transparent bg-destructive text-white " +
+    "shadow-[inset_0_1px_0_rgba(255,255,255,0.18),inset_0_-1px_0_rgba(0,0,0,0.25)] hover:bg-destructive/90",
+};
+
+export function Spinner({ className }: { className?: string }) {
+  return (
+    <span
+      aria-label="Loading"
+      role="status"
+      className={cn(
+        "inline-block size-3.5 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent",
+        className,
+      )}
+    />
+  );
+}
+
 export function Button({
   variant = "secondary",
   loading = false,
   className,
   children,
+  type,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
@@ -22,22 +61,12 @@ export function Button({
   return (
     <button
       {...props}
+      type={type ?? "button"}
       disabled={props.disabled || loading}
-      className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-pill px-4 py-1.5 text-sm transition-colors duration-150 ease-out",
-        "active:scale-[0.96] transition-transform",
-        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-        "disabled:pointer-events-none disabled:opacity-50",
-        variant === "primary" &&
-          "bg-primary text-primary-foreground hover:bg-primary-strong",
-        variant === "secondary" &&
-          "bg-secondary text-secondary-foreground hover:bg-accent-wash",
-        variant === "ghost" &&
-          "text-muted-foreground hover:bg-accent-wash hover:text-foreground",
-        className,
-      )}
+      aria-disabled={loading || undefined}
+      className={cn(BASE, VARIANTS[variant], className)}
     >
-      {loading ? <Loader2 size={15} strokeWidth={1.5} className="animate-spin" aria-hidden="true" /> : null}
+      {loading ? <Spinner /> : null}
       {children}
     </button>
   );

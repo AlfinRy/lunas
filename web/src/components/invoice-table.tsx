@@ -28,7 +28,7 @@ export function InvoiceTable({
       {/* header row */}
       <div
         role="row"
-        className="hidden grid-cols-[minmax(140px,1.6fr)_92px_110px_110px_130px_130px] gap-3 border-t border-border px-5 py-2 text-xs text-muted-foreground md:grid"
+        className="hidden grid-cols-[minmax(140px,1.6fr)_92px_110px_110px_130px_130px] gap-3 px-3.5 pb-1.5 pt-2.5 text-xs text-muted-foreground md:grid"
       >
         <span role="columnheader">Payer</span>
         <span role="columnheader" className="text-end">
@@ -49,7 +49,7 @@ export function InvoiceTable({
             <div
               key={i}
               role="row"
-              className="grid grid-cols-2 items-center gap-3 border-t border-border px-5 py-3.5 md:grid-cols-[minmax(140px,1.6fr)_92px_110px_110px_130px_130px]"
+              className="grid grid-cols-2 items-center gap-3 border-t border-border/70 px-3.5 py-3 md:grid-cols-[minmax(140px,1.6fr)_92px_110px_110px_130px_130px]"
             >
               <Skeleton className="h-4 w-28" />
               <Skeleton className="h-4 w-16 justify-self-end" />
@@ -79,7 +79,7 @@ function Row({ invoice }: { invoice: Invoice }) {
   return (
     <div
       role="row"
-      className="grid grid-cols-2 items-center gap-x-3 gap-y-1.5 border-t border-border px-5 py-3.5 transition-colors duration-150 ease-out hover:bg-accent-wash md:grid-cols-[minmax(140px,1.6fr)_92px_110px_110px_130px_130px] md:gap-y-0"
+      className="grid grid-cols-2 items-center gap-x-3 gap-y-1.5 border-t border-border/70 px-3.5 py-3 transition-colors duration-150 ease-out hover:bg-accent-wash/70 md:grid-cols-[minmax(140px,1.6fr)_92px_110px_110px_130px_130px] md:gap-y-0"
     >
       {/* payer + number on mobile */}
       <div role="cell" className="min-w-0">

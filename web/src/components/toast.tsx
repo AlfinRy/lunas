@@ -43,11 +43,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               animate={{
                 opacity: 1,
                 y: 0,
-                scale: 1,
+                scale: t.kind === "success" ? [0.97, 1.03, 1] : 1,
                 x: t.kind === "error" ? [0, -6, 6, -3, 0] : 0,
               }}
+              transition={{ ...BANNER, scale: { duration: 0.28 }, x: { duration: 0.32 } }}
               exit={{ opacity: 0, y: 6 }}
-              transition={{ ...BANNER, x: { duration: 0.32 } }}
               className="pointer-events-auto flex items-center gap-2.5 rounded-2xl border border-border bg-popover px-4 py-3 text-sm shadow-lg"
             >
               {t.kind === "success" ? (

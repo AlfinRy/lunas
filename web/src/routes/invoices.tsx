@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { createRoute } from "@tanstack/react-router";
 import { Route as rootRoute } from "./__root";
-import { Card } from "@/components/card";
+import { Plate } from "@/components/card";
 import { Button } from "@/components/button";
 import { InvoiceTable } from "@/components/invoice-table";
 import { AddInvoiceModal } from "@/components/add-invoice-modal";
@@ -27,10 +27,10 @@ function InvoicesPage() {
         </Button>
       </header>
 
-      <Card className="p-0">
+      <Plate title="All invoices" meta="Overdue first" contentClassName="py-0">
         <InvoiceTable invoices={invoices.data} loading={invoices.isPending} skeletonRows={6} />
         {invoices.data && invoices.data.length === 0 ? (
-          <div className="flex flex-col items-start gap-1 border-t border-border px-5 py-10">
+          <div className="flex flex-col items-start gap-1 px-5 py-10">
             <p className="font-medium">No invoices yet</p>
             <p className="text-sm text-muted-foreground">
               Add an invoice and Lunas will start planning the first chase.
@@ -40,7 +40,7 @@ function InvoicesPage() {
             </Button>
           </div>
         ) : null}
-      </Card>
+      </Plate>
 
       <AddInvoiceModal open={adding} onClose={() => setAdding(false)} />
     </main>

@@ -3,7 +3,7 @@ import { createRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Mail } from "lucide-react";
 import { Route as rootRoute } from "./__root";
-import { Card } from "@/components/card";
+import { Card, Plate } from "@/components/card";
 import { api } from "@/api/client";
 import { cn } from "@/lib/cn";
 
@@ -32,7 +32,7 @@ function OutboxPage() {
         </Card>
       ) : (
         <div className="flex flex-col gap-4 lg:flex-row">
-          <Card className="min-w-0 flex-1 p-0">
+          <Plate title="Sent" meta={`${emails.length} chases`} className="min-w-0 flex-1">
             <ul>
               {emails.map((e) => (
                 <li key={e.id}>
@@ -53,7 +53,7 @@ function OutboxPage() {
                 </li>
               ))}
             </ul>
-          </Card>
+          </Plate>
 
           {active ? (
             <Card className="min-w-0 flex-1 p-5">
